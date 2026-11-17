@@ -2,8 +2,13 @@ package main
 
 import (
 	"helpdesk-app/backend/config"
+	"helpdesk-app/backend/handlers"
+	"helpdesk-app/backend/middleware"
+	"helpdesk-app/backend/repositories"
+	"helpdesk-app/backend/services"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -22,6 +27,17 @@ func main() {
 	}
 	defer sqlDB.Close()
 
+	userRepo := repositories.NewUserRepository(db)
+
+	jwtExpiry, err := time.ParseDuration(cfg.JWTExpiry)
+	if err != nil {
+		log.Fatal("Invalid JWT_EXPIRY format", err)
+	}
+
+	authServie := services.NewAuthService(userRepo, cfg.JWTSecret, jwtExpiry)
+	authHandler := handlers.NewAuthHandler(authServie)
+
+	// Router
 	r := gin.Default()
 
 	r.GET("/api/health", func(c *gin.Context) {
@@ -38,6 +54,18 @@ func main() {
 			"message": "Server is running and database is connected",
 		})
 	})
+
+	auth := r.Group("/api/auth")
+	{
+		auth.POST("/register", authHandler.Register)
+		auth.POST("/login", authHandler.Login)
+	}
+
+	protected := r.Group("/api")
+	protected.Use(middleware.AuthMiddleware(cfg.JWTSecret))
+	{
+		protected.GET("/me", authHandler.GetMe)
+	}
 
 	log.Printf("Server starting on port %s", cfg.Port)
 	if err := r.Run(":" + cfg.Port); err != nil {

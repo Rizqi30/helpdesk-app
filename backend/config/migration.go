@@ -18,5 +18,5 @@ func RunMigration(db *gorm.DB) {
 		log.Fatal("Migration failed: ", err)
 	}
 
-	log.Println("Database migration ccompleted successfully")
+	log.Println("Database migration completed successfully")
 }
