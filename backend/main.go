@@ -13,6 +13,9 @@ func main() {
 
 	db := config.ConnectDatabase(cfg)
 
+	config.RunMigration(db)
+	config.RunSeeder(db)
+
 	sqlDB, err := db.DB()
 	if err != nil {
 		log.Fatal("Failed to get underlying DB: ", err)
