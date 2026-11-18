@@ -28,4 +28,5 @@ type Ticket struct {
 
 	Requester User `json:"requester" gorm:"foreignKey:RequesterID;constraint:OnDelete:CASCADE"`
 	Assignee User `json:"assignee,omitempty" gorm:"foreignKey:AssigneeID;constraint:OnDelete:SET NULL"`
+	Comments []Comment `json:"comments,omitempty" gorm:"foreignKey:TicketID"`
 }

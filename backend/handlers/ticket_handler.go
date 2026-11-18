@@ -168,7 +168,7 @@ func (h *TicketHandler) Update(c *gin.Context) {
 			status = http.StatusBadRequest
 		default:
 			if strings.Contains(err.Error(), "Cannot transition") ||
-				strings.Contains(err.Error(), "Is not allowed to transition") {
+				strings.Contains(err.Error(), "is not allowed to transition") {
 				status = http.StatusForbidden
 			}
 		}

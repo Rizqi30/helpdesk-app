@@ -12,12 +12,14 @@ import (
 type TicketService struct {
 	TicketRepo *repositories.TicketRepository
 	UserRepo *repositories.UserRepository
+	CommentRepo *repositories.CommentRepository
 }
 
-func NewTicketService(ticketRepo *repositories.TicketRepository, userRepo *repositories.UserRepository) *TicketService {
+func NewTicketService(ticketRepo *repositories.TicketRepository, userRepo *repositories.UserRepository, commentRepo *repositories.CommentRepository) *TicketService {
 	return &TicketService{
 		TicketRepo: ticketRepo,
 		UserRepo: userRepo,
+		CommentRepo: commentRepo,
 	}
 }
 
@@ -124,6 +126,14 @@ func (s *TicketService) GetTicketByID(ticketID uint, userID uint, userRole strin
 	if userRole == models.RoleRequester && ticket.RequesterID != userID {
 		return nil, errors.New("Ticket not found")
 	}
+
+	includeInternal := userRole != models.RoleRequester
+	comments, err := s.CommentRepo.FindByTicketID(ticketID, includeInternal)
+	if err != nil {
+		return nil, errors.New("Failed to load comments")
+	}
+	
+	ticket.Comments = comments
 
 	return ticket, nil
 }

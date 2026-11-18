@@ -30,6 +30,7 @@ func main() {
 	// Repositories
 	userRepo := repositories.NewUserRepository(db)
 	ticketRepo := repositories.NewTicketRepository(db)
+	commentRepo := repositories.NewCommentRepository(db)
 
 	// Services
 	jwtExpiry, err := time.ParseDuration(cfg.JWTExpiry)
@@ -38,11 +39,13 @@ func main() {
 	}
 
 	authService := services.NewAuthService(userRepo, cfg.JWTSecret, jwtExpiry)
-	ticketService := services.NewTicketService(ticketRepo, userRepo)
+	ticketService := services.NewTicketService(ticketRepo, userRepo, commentRepo)
+	commentService := services.NewCommentService(commentRepo, ticketRepo)
 
 	// Handlers
 	authHandler := handlers.NewAuthHandler(authService)
 	ticketHandler := handlers.NewTicketHandler(ticketService)
+	commentHandler := handlers.NewCommentHandler(commentService)
 
 	// Router
 	r := gin.Default()
@@ -73,10 +76,15 @@ func main() {
 	{
 		protected.GET("/me", authHandler.GetMe)
 
+		// Route tickets
 		protected.POST("/tickets", ticketHandler.Create)
 		protected.GET("/tickets", ticketHandler.GetAll)
 		protected.GET("/tickets/:id", ticketHandler.GetByID)
 		protected.PATCH("/tickets/:id", ticketHandler.Update)
+
+		// Route comment
+		protected.POST("/tickets/:id/comments", commentHandler.AddComment)
+		protected.GET("/tickets/:id/comments", commentHandler.GetComments)
 	}
 
 	log.Printf("Server starting on port %s", cfg.Port)
