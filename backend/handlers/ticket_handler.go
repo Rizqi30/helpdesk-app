@@ -162,6 +162,7 @@ func (h *TicketHandler) Update(c *gin.Context) {
 		case "Ticket not found":
 			status = http.StatusNotFound
 		case "Requester cannot assign tickets",
+			"Requester cannot change ticket priority",
 			"Cannot assign ticket to a requester":
 			status = http.StatusForbidden
 		case "Assignee not found":
