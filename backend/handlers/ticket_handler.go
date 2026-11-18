@@ -5,6 +5,7 @@ import (
 	"helpdesk-app/backend/services"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -160,12 +161,18 @@ func (h *TicketHandler) Update(c *gin.Context) {
 		switch err.Error() {
 		case "Ticket not found":
 			status = http.StatusNotFound
-		case "Requester cannot assign tickets", "Requester cannot change ticket status",
+		case "Requester cannot assign tickets",
 			"Cannot assign ticket to a requester":
 			status = http.StatusForbidden
 		case "Assignee not found":
 			status = http.StatusBadRequest
+		default:
+			if strings.Contains(err.Error(), "Cannot transition") ||
+				strings.Contains(err.Error(), "Is not allowed to transition") {
+				status = http.StatusForbidden
+			}
 		}
+
 		c.JSON(status, gin.H{
 			"status": "error",
 			"message": err.Error(),

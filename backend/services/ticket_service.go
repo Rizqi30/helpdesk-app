@@ -2,6 +2,7 @@ package services
 
 import (
 	"errors"
+	"fmt"
 	"helpdesk-app/backend/models"
 	"helpdesk-app/backend/repositories"
 
@@ -34,6 +35,44 @@ type UpdateTicketInput struct {
 	Priority *string `json:"priority" binding:"omitempty,oneof=low medium high urgent"`
 	Status *string `json:"status" binding:"omitempty,oneof=open in_progress resolved closed"`
 	AssigneeID *uint  `json:"assignee_id" binding:"omitempty"`
+}
+
+var statusTransitions = map[string]map[string][]string {
+	models.StatusOpen: {
+		models.StatusInProgress: {models.RoleAgent, models.RoleAdmin},
+		models.StatusClosed: {models.RoleRequester, models.RoleAdmin},
+	},
+	models.StatusInProgress: {
+		models.StatusResolved: {models.RoleAgent, models.RoleAdmin},
+	},
+	models.StatusResolved: {
+		models.StatusClosed: {models.RoleRequester, models.RoleAgent, models.RoleAdmin},
+		models.StatusOpen: {models.RoleRequester},
+	},
+}
+
+func validateStatusTransition(currentStatus, newStatus, userRole string) error {
+	if currentStatus == newStatus {
+		return nil
+	}
+
+	allowedTargets, exists := statusTransitions[currentStatus]
+	if !exists {
+		return errors.New("Cannot transition from status: " + currentStatus)
+	}
+
+	allowedRoles, exists := allowedTargets[newStatus]
+	if !exists {
+		return fmt.Errorf("Cannot transition from '%s' to '%s'", currentStatus, newStatus)
+	}
+
+	for _, role := range allowedRoles {
+		if role == userRole {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("Role '%s' is not allowed to transition from '%s' to '%s'", userRole, currentStatus, newStatus)
 }
 
 func (s *TicketService) CreateTicket(input CreateTicketInput, requesterID uint) (*models.Ticket, error) {
@@ -107,9 +146,11 @@ func (s *TicketService) UpdateTicket(ticketID uint, input UpdateTicketInput, use
 		if input.AssigneeID != nil {
 			return nil, errors.New("Requester cannot assign tickets")
 		}
+	}
 
-		if input.Status != nil {
-			return nil, errors.New("Requester cannot change ticket status")
+	if input.Status != nil {
+		if err := validateStatusTransition(ticket.Status, *input.Status, userRole); err != nil {
+			return nil, err
 		}
 	}
 
@@ -128,18 +169,23 @@ func (s *TicketService) UpdateTicket(ticketID uint, input UpdateTicketInput, use
 	if input.Title != nil {
 		ticket.Title = *input.Title
 	}
+
 	if input.Description != nil {
 		ticket.Description = *input.Description
 	}
+
 	if input.Category != nil {
 		ticket.Category = *input.Category
 	}
+
 	if input.Priority != nil {
 		ticket.Priority = *input.Priority
 	}
+
 	if input.Status != nil {
 		ticket.Status = *input.Status
 	}
+
 	if input.AssigneeID != nil {
 		ticket.AssigneeID = input.AssigneeID
 	}
