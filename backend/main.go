@@ -91,11 +91,11 @@ func main() {
 	}
 
 	// Only admin routes
-	admin:= r.Group("/api/admin")
+	admin:= r.Group("/api/users")
 	admin.Use(middlewares.AuthMiddleware(cfg.JWTSecret), middlewares.RoleMiddleware(models.RoleAdmin))
 	{
-		admin.GET("/users", userHandler.GetAll)
-		admin.PATCH("/users/:id/role", userHandler.UpdateRole)
+		admin.GET("", userHandler.GetAll)
+		admin.PATCH("/:id/role", userHandler.UpdateRole)
 	}
 
 	log.Printf("Server starting on port %s", cfg.Port)

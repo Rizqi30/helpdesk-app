@@ -156,6 +156,10 @@ func (s *TicketService) UpdateTicket(ticketID uint, input UpdateTicketInput, use
 		if input.AssigneeID != nil {
 			return nil, errors.New("Requester cannot assign tickets")
 		}
+
+		if input.Priority != nil {
+			return nil, errors.New("Requester cannot change ticket priority")
+		}
 	}
 
 	if input.Status != nil {
