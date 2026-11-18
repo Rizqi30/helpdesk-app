@@ -1,60 +1,88 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import FormInput from '@/components/FormInput.vue'
+import FormAlert from '@/components/FormAlert.vue'
 
 const router = useRouter()
 const auth = useAuthStore()
 
-const email = ref('')
-const password = ref('')
-const error = ref('')
+// Form data
+const form = reactive({
+  email: '',
+  password: '',
+})
+
+const errors = reactive({
+  email: '',
+  password: '',
+})
+
+const serverError = ref('')
+
+function validate(): boolean {
+  let valid = true
+  errors.email = ''
+  errors.password = ''
+
+  if (!form.email) {
+    errors.email = 'Email is required'
+    valid = false
+  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+    errors.email = 'Please enter a valid email address'
+    valid = false
+  }
+
+  if (!form.password) {
+    errors.password = 'Password is required'
+    valid = false
+  }
+
+  return valid
+}
 
 async function handleLogin() {
-  error.value = ''
-  const result = await auth.login(email.value, password.value)
+  serverError.value = ''
+
+  if (!validate()) return
+
+  const result = await auth.login(form.email, form.password)
   if (result.success) {
     router.push({ name: 'dashboard' })
   } else {
-    error.value = result.message
+    serverError.value = result.message
   }
 }
 </script>
 
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-gray-50">
+  <div class="min-h-screen flex items-center justify-center bg-gray-50 px-4">
     <div class="w-full max-w-md p-8 bg-white rounded-lg shadow-md">
       <h1 class="text-2xl font-bold text-center text-gray-900 mb-6">
         Helpdesk Login
       </h1>
 
-      <!-- Error message -->
-      <div v-if="error" class="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded">
-        {{ error }}
-      </div>
+      <FormAlert v-if="serverError" type="error" :message="serverError" />
 
       <form @submit.prevent="handleLogin" class="space-y-4">
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-          <input
-            v-model="email"
-            type="email"
-            required
-            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="email@example.com"
-          />
-        </div>
+        <FormInput
+          v-model="form.email"
+          label="Email"
+          type="email"
+          placeholder="email@example.com"
+          :error="errors.email"
+          :required="true"
+        />
 
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
-          <input
-            v-model="password"
-            type="password"
-            required
-            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="••••••••"
-          />
-        </div>
+        <FormInput
+          v-model="form.password"
+          label="Password"
+          type="password"
+          placeholder="••••••••"
+          :error="errors.password"
+          :required="true"
+        />
 
         <button
           type="submit"
