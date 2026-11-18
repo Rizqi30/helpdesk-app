@@ -3,7 +3,7 @@ package main
 import (
 	"helpdesk-app/backend/config"
 	"helpdesk-app/backend/handlers"
-	"helpdesk-app/backend/middleware"
+	"helpdesk-app/backend/middlewares"
 	"helpdesk-app/backend/repositories"
 	"helpdesk-app/backend/services"
 	"log"
@@ -27,15 +27,22 @@ func main() {
 	}
 	defer sqlDB.Close()
 
+	// Repositories
 	userRepo := repositories.NewUserRepository(db)
+	ticketRepo := repositories.NewTicketRepository(db)
 
+	// Services
 	jwtExpiry, err := time.ParseDuration(cfg.JWTExpiry)
 	if err != nil {
 		log.Fatal("Invalid JWT_EXPIRY format", err)
 	}
 
-	authServie := services.NewAuthService(userRepo, cfg.JWTSecret, jwtExpiry)
-	authHandler := handlers.NewAuthHandler(authServie)
+	authService := services.NewAuthService(userRepo, cfg.JWTSecret, jwtExpiry)
+	ticketService := services.NewTicketService(ticketRepo, userRepo)
+
+	// Handlers
+	authHandler := handlers.NewAuthHandler(authService)
+	ticketHandler := handlers.NewTicketHandler(ticketService)
 
 	// Router
 	r := gin.Default()
@@ -62,9 +69,14 @@ func main() {
 	}
 
 	protected := r.Group("/api")
-	protected.Use(middleware.AuthMiddleware(cfg.JWTSecret))
+	protected.Use(middlewares.AuthMiddleware(cfg.JWTSecret))
 	{
 		protected.GET("/me", authHandler.GetMe)
+
+		protected.POST("/tickets", ticketHandler.Create)
+		protected.GET("/tickets", ticketHandler.GetAll)
+		protected.GET("/tickets/:id", ticketHandler.GetByID)
+		protected.PATCH("/tickets/:id", ticketHandler.Update)
 	}
 
 	log.Printf("Server starting on port %s", cfg.Port)

@@ -11,8 +11,8 @@ type AuthHandler struct {
 	AuthService *services.AuthService
 }
 
-func NewAuthHandler(authServie *services.AuthService) *AuthHandler {
-	return &AuthHandler{AuthService: authServie}
+func NewAuthHandler(authService *services.AuthService) *AuthHandler {
+	return &AuthHandler{AuthService: authService}
 }
 
 func (h *AuthHandler) Register(c *gin.Context) {
@@ -41,7 +41,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, gin.H{
 		"status": "success",
-		"message": "User registered seccessfully",
+		"message": "User registered successfully",
 		"data": gin.H{
 			"user": user,
 			"token": token,

@@ -1,4 +1,4 @@
-package middleware
+package middlewares
 
 import (
 	"helpdesk-app/backend/utils"
@@ -34,7 +34,7 @@ func AuthMiddleware(jwtSecret string) gin.HandlerFunc {
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{
 				"status": "error",
-				"message": "Invalid por expred token",
+				"message": "Invalid or expired token",
 			})
 			c.Abort()
 			return 
