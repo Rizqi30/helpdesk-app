@@ -4,6 +4,7 @@ import (
 	"helpdesk-app/backend/config"
 	"helpdesk-app/backend/handlers"
 	"helpdesk-app/backend/middlewares"
+	"helpdesk-app/backend/models"
 	"helpdesk-app/backend/repositories"
 	"helpdesk-app/backend/services"
 	"log"
@@ -41,11 +42,13 @@ func main() {
 	authService := services.NewAuthService(userRepo, cfg.JWTSecret, jwtExpiry)
 	ticketService := services.NewTicketService(ticketRepo, userRepo, commentRepo)
 	commentService := services.NewCommentService(commentRepo, ticketRepo)
+	userService := services.NewUserService(userRepo)
 
 	// Handlers
 	authHandler := handlers.NewAuthHandler(authService)
 	ticketHandler := handlers.NewTicketHandler(ticketService)
 	commentHandler := handlers.NewCommentHandler(commentService)
+	userHandler := handlers.NewUserHandler(userService)
 
 	// Router
 	r := gin.Default()
@@ -85,6 +88,14 @@ func main() {
 		// Route comment
 		protected.POST("/tickets/:id/comments", commentHandler.AddComment)
 		protected.GET("/tickets/:id/comments", commentHandler.GetComments)
+	}
+
+	// Only admin routes
+	admin:= r.Group("/api/admin")
+	admin.Use(middlewares.AuthMiddleware(cfg.JWTSecret), middlewares.RoleMiddleware(models.RoleAdmin))
+	{
+		admin.GET("/users", userHandler.GetAll)
+		admin.PATCH("/users/:id/role", userHandler.UpdateRole)
 	}
 
 	log.Printf("Server starting on port %s", cfg.Port)

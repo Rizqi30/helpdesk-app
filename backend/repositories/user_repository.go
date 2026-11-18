@@ -29,3 +29,14 @@ func (r *UserRepository) FindByID(id uint) (*models.User, error) {
 func (r *UserRepository) Create(user *models.User) error {
 	return r.DB.Create(user).Error
 }
+
+func (r *UserRepository) FindAll() ([]models.User, error) {
+	var users []models.User
+	err := r.DB.Order("created_at ASC").Find(&users).Error
+
+	return users, err
+}
+
+func (r *UserRepository) Update(user *models.User) error {
+	return r.DB.Save(user).Error
+}
