@@ -23,15 +23,15 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
-      path: '/tickets/:id',
-      name: 'ticket-detail',
-      component: () => import('@/views/TicketDetail.vue'),
-      meta: { requiresAuth: true },
-    },
-    {
       path: '/tickets/create',
       name: 'ticket-create',
       component: () => import('@/views/TicketCreate.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/tickets/:id',
+      name: 'ticket-detail',
+      component: () => import('@/views/TicketDetail.vue'),
       meta: { requiresAuth: true },
     },
     {
