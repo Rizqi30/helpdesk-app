@@ -6,9 +6,11 @@ import StatusBadge from '@/components/StatusBadge.vue'
 import PriorityBadge from '@/components/PriorityBadge.vue'
 import Pagination from '@/components/Pagination.vue'
 import { ticketService, type TicketFilter, type Ticket } from '@/services/ticket'
+import { useAuthStore } from '@/stores/auth'
 import { Plus, Search, Loader2 } from 'lucide-vue-next'
 
 const router = useRouter()
+const auth = useAuthStore()
 
 const tickets = ref<Ticket[]>([])
 const loading = ref(false)
@@ -82,6 +84,7 @@ onMounted(fetchTickets)
         <h1 class="text-2xl font-bold text-gray-900">Daftar Tiket</h1>
 
         <RouterLink
+          v-if="auth.isRequester"
           to="/tickets/create"
           class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700"
         >
@@ -140,7 +143,8 @@ onMounted(fetchTickets)
 
       <div v-else-if="tickets.length === 0" class="text-center py-12 bg-white rounded-lg border border-gray-200">
         <p class="text-gray-500 text-lg mb-2">Belum ada tiket</p>
-        <p class="text-gray-400 text-sm">Buat tiket pertama Anda dengan menekan tombol "Buat Tiket"</p>
+        <p v-if="auth.isRequester" class="text-gray-400 text-sm">Buat tiket pertama Anda dengan menekan tombol "Buat Tiket"</p>
+        <p v-else class="text-gray-400 text-sm">Belum ada tiket yang masuk</p>
       </div>
 
       <div v-else class="bg-white rounded-lg border border-gray-200 overflow-hidden">
@@ -150,9 +154,11 @@ onMounted(fetchTickets)
               <tr>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Judul</th>
+                <th v-if="!auth.isRequester" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Requester</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kategori</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Prioritas</th>
+                <th v-if="!auth.isRequester" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Assignee</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tanggal</th>
               </tr>
             </thead>
@@ -165,6 +171,7 @@ onMounted(fetchTickets)
               >
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">#{{ ticket.id }}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ ticket.title }}</td>
+                <td v-if="!auth.isRequester" class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ ticket.requester.name }}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ ticket.category || '-' }}</td>
                 <td class="px-6 py-4 whitespace-nowrap">
                   <StatusBadge :status="ticket.status" />
@@ -172,6 +179,7 @@ onMounted(fetchTickets)
                 <td class="px-6 py-4 whitespace-nowrap">
                   <PriorityBadge :priority="ticket.priority" />
                 </td>
+                <td v-if="!auth.isRequester" class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ ticket.assignee?.name || '-' }}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ formatDate(ticket.created_at) }}</td>
               </tr>
             </tbody>

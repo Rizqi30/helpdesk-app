@@ -7,8 +7,9 @@ import PriorityBadge from '@/components/PriorityBadge.vue'
 import FormAlert from '@/components/FormAlert.vue'
 import { ticketService, type Ticket } from '@/services/ticket'
 import { commentService } from '@/services/comment'
+import { userService, type User } from '@/services/user'
 import { useAuthStore } from '@/stores/auth'
-import { ArrowLeft, Send, Loader2, User } from 'lucide-vue-next'
+import { ArrowLeft, Send, Loader2, User as UserIcon } from 'lucide-vue-next'
 
 const route = useRoute()
 const router = useRouter()
@@ -19,12 +20,24 @@ const loading = ref(false)
 const error = ref('')
 
 const commentBody = ref('')
+const isInternal = ref(false)
 const commentLoading = ref(false)
 const commentError = ref('')
 
 const statusLoading = ref(false)
 const statusError = ref('')
 const statusSuccess = ref('')
+
+const agents = ref<User[]>([])
+const selectedAssignee = ref<number | ''>('')
+const assignLoading = ref(false)
+const assignError = ref('')
+const assignSuccess = ref('')
+
+const selectedPriority = ref('')
+const priorityLoading = ref(false)
+const priorityError = ref('')
+const prioritySuccess = ref('')
 
 const ticketId = computed(() => Number(route.params.id))
 
@@ -50,10 +63,24 @@ async function fetchTicket() {
 
   try {
     ticket.value = await ticketService.getById(ticketId.value)
+
+    selectedPriority.value = ticket.value.priority
+    selectedAssignee.value = ticket.value.assignee_id || ''
   } catch (err: any) {
     error.value = err.response?.data?.message || 'Gagal memuat tiket'
   } finally {
     loading.value = false
+  }
+}
+
+async function fetchAgents() {
+  if (auth.isRequester) return
+
+  try {
+    const users = await userService.getAll()
+    agents.value = users.filter(u => u.role === 'agent' || u.role === 'admin')
+  } catch {
+    agents.value = []
   }
 }
 
@@ -66,9 +93,11 @@ async function handleAddComment() {
   try {
     await commentService.create(ticketId.value, {
       body: commentBody.value.trim(),
+      is_internal: isInternal.value || undefined,
     })
 
     commentBody.value = ''
+    isInternal.value = false
     await fetchTicket()
   } catch (err: any) {
     commentError.value = err.response?.data?.message || 'Gagal menambahkan komentar'
@@ -97,6 +126,50 @@ async function handleStatusChange(newStatus: string) {
   }
 }
 
+async function handleAssign() {
+  if (selectedAssignee.value === '' || selectedAssignee.value === (ticket.value?.assignee_id || '')) return
+
+  assignLoading.value = true
+  assignError.value = ''
+  assignSuccess.value = ''
+
+  try {
+    await ticketService.update(ticketId.value, { assignee_id: Number(selectedAssignee.value) })
+    assignSuccess.value = 'Assignee berhasil diubah'
+    await fetchTicket()
+
+    setTimeout(() => {
+      assignSuccess.value = ''
+    }, 3000)
+  } catch (err: any) {
+    assignError.value = err.response?.data?.message || 'Gagal mengubah assignee'
+  } finally {
+    assignLoading.value = false
+  }
+}
+
+async function handlePriorityChange() {
+  if (!selectedPriority.value || selectedPriority.value === ticket.value?.priority) return
+
+  priorityLoading.value = true
+  priorityError.value = ''
+  prioritySuccess.value = ''
+
+  try {
+    await ticketService.update(ticketId.value, { priority: selectedPriority.value })
+    prioritySuccess.value = 'Prioritas berhasil diubah'
+    await fetchTicket()
+
+    setTimeout(() => {
+      prioritySuccess.value = ''
+    }, 3000)
+  } catch (err: any) {
+    priorityError.value = err.response?.data?.message || 'Gagal mengubah prioritas'
+  } finally {
+    priorityLoading.value = false
+  }
+}
+
 function formatDateTime(dateStr: string) {
   return new Date(dateStr).toLocaleDateString('id-ID', {
     day: 'numeric',
@@ -107,7 +180,10 @@ function formatDateTime(dateStr: string) {
   })
 }
 
-onMounted(fetchTicket)
+onMounted(() => {
+  fetchTicket()
+  fetchAgents()
+})
 </script>
 
 <template>
@@ -169,6 +245,58 @@ onMounted(fetchTicket)
           </div>
         </div>
 
+        <div v-if="!auth.isRequester" class="bg-white p-4 rounded-lg border border-gray-200 mb-6 space-y-4">
+          <h2 class="text-sm font-semibold text-gray-700">Kelola Tiket</h2>
+
+          <div v-if="agents.length > 0">
+            <label class="block text-sm text-gray-600 mb-1">Assign ke</label>
+            <FormAlert v-if="assignSuccess" type="success" :message="assignSuccess" />
+            <FormAlert v-if="assignError" type="error" :message="assignError" />
+            <div class="flex gap-2">
+              <select
+                v-model="selectedAssignee"
+                class="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">-- Pilih Agent --</option>
+                <option v-for="agent in agents" :key="agent.id" :value="agent.id">
+                  {{ agent.name }} ({{ agent.role }})
+                </option>
+              </select>
+              <button
+                @click="handleAssign"
+                :disabled="assignLoading || selectedAssignee === '' || selectedAssignee === (ticket.assignee_id || '')"
+                class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {{ assignLoading ? 'Menyimpan...' : 'Assign' }}
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm text-gray-600 mb-1">Ubah Prioritas</label>
+            <FormAlert v-if="prioritySuccess" type="success" :message="prioritySuccess" />
+            <FormAlert v-if="priorityError" type="error" :message="priorityError" />
+            <div class="flex gap-2">
+              <select
+                v-model="selectedPriority"
+                class="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+                <option value="urgent">Urgent</option>
+              </select>
+              <button
+                @click="handlePriorityChange"
+                :disabled="priorityLoading || selectedPriority === ticket.priority"
+                class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {{ priorityLoading ? 'Menyimpan...' : 'Ubah' }}
+              </button>
+            </div>
+          </div>
+        </div>
+
         <div v-if="allowedTransitions.length > 0" class="bg-white p-4 rounded-lg border border-gray-200 mb-6">
           <h2 class="text-sm font-medium text-gray-700 mb-3">Ubah Status</h2>
 
@@ -214,7 +342,7 @@ onMounted(fetchTicket)
             >
               <div class="flex items-start gap-3">
                 <div class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center shrink-0">
-                  <User :size="16" class="text-gray-500" />
+                  <UserIcon :size="16" class="text-gray-500" />
                 </div>
                 <div class="flex-1 min-w-0">
                   <div class="flex flex-wrap items-center gap-2 mb-1">
@@ -236,22 +364,33 @@ onMounted(fetchTicket)
           <div class="p-4 border-t border-gray-200">
             <FormAlert v-if="commentError" type="error" :message="commentError" />
 
-            <form @submit.prevent="handleAddComment" class="flex gap-3">
-              <textarea
-                v-model="commentBody"
-                placeholder="Tulis komentar..."
-                rows="2"
-                class="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-              ></textarea>
+            <form @submit.prevent="handleAddComment">
+              <div class="flex gap-3">
+                <textarea
+                  v-model="commentBody"
+                  placeholder="Tulis komentar..."
+                  rows="2"
+                  class="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                ></textarea>
 
-              <button
-                type="submit"
-                :disabled="commentLoading || !commentBody.trim()"
-                class="self-end px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
-              >
-                <Loader2 v-if="commentLoading" :size="16" class="animate-spin" />
-                <Send v-else :size="16" />
-              </button>
+                <button
+                  type="submit"
+                  :disabled="commentLoading || !commentBody.trim()"
+                  class="self-end px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+                >
+                  <Loader2 v-if="commentLoading" :size="16" class="animate-spin" />
+                  <Send v-else :size="16" />
+                </button>
+              </div>
+
+              <label v-if="!auth.isRequester" class="inline-flex items-center gap-2 mt-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  v-model="isInternal"
+                  class="rounded border-gray-300 text-yellow-600 focus:ring-yellow-500"
+                />
+                <span class="text-sm text-gray-600">Catatan internal (hanya terlihat oleh agent dan admin)</span>
+              </label>
             </form>
           </div>
         </div>
