@@ -110,6 +110,7 @@ func main() {
 	admin.Use(middlewares.AuthMiddleware(cfg.JWTSecret), middlewares.RoleMiddleware(models.RoleAdmin))
 	{
 		admin.GET("", userHandler.GetAll)
+		admin.GET("/stats", ticketHandler.GetStats)
 		admin.PATCH("/:id/role", userHandler.UpdateRole)
 	}
 

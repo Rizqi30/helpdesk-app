@@ -77,6 +77,10 @@ func validateStatusTransition(currentStatus, newStatus, userRole string) error {
 	return fmt.Errorf("Role '%s' is not allowed to transition from '%s' to '%s'", userRole, currentStatus, newStatus)
 }
 
+func (s *TicketService) GetAdminStats() (*repositories.AdminStats, error) {
+	return s.TicketRepo.GetAdminStats()
+}
+
 func (s *TicketService) CreateTicket(input CreateTicketInput, requesterID uint) (*models.Ticket, error) {
 	priority := models.PriorityMedium
 	if input.Priority != "" {

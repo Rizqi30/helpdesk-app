@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"helpdesk-app/backend/models"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -31,6 +32,38 @@ type TicketListResult struct {
 	Page int `json:"page"`
 	Limit int `json:"limit"`
 	TotalPages int `json:"total_pages"`
+}
+
+type AdminStats struct {
+	TotalTickets int64 `json:"total_tickets"`
+	OpenTickets int64 `json:"open_tickets"`
+	InProgressTickets int64 `json:"in_progress_tickets"`
+	ResolvedTickets int64 `json:"resolved_tickets"`
+	ClosedTickets int64 `json:"closed_tickets"`
+	OverdueTickets int64 `json:"overdue_tickets"`
+	TotalUsers int64 `json:"total_users"`
+}
+
+func (r *TicketRepository) GetAdminStats() (*AdminStats, error) {
+	var stats AdminStats
+
+	if err := r.DB.Model(&models.Ticket{}).Count(&stats.TotalTickets).Error; err != nil {
+		return nil, err
+	}
+
+	r.DB.Model(&models.Ticket{}).Where("status = ?", models.StatusOpen).Count(&stats.OpenTickets)
+	r.DB.Model(&models.Ticket{}).Where("status = ?", models.StatusInProgress).Count(&stats.InProgressTickets)
+	r.DB.Model(&models.Ticket{}).Where("status = ?", models.StatusResolved).Count(&stats.ResolvedTickets)
+	r.DB.Model(&models.Ticket{}).Where("status = ?", models.StatusClosed).Count(&stats.ClosedTickets)
+
+	twoHoursAgo := time.Now().Add(-models.SLAThreshold)
+	r.DB.Model(&models.Ticket{}).
+		Where("priority = ? AND status = ? AND created_at < ?", models.PriorityUrgent, models.StatusOpen, twoHoursAgo).
+		Count(&stats.OverdueTickets)
+
+	r.DB.Model(&models.User{}).Count(&stats.TotalUsers)
+
+	return &stats, nil
 }
 
 func (r *TicketRepository) FindAll(filter TicketFilter, requesterID uint) (*TicketListResult, error) {

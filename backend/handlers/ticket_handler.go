@@ -18,6 +18,23 @@ func NewTicketHandler(ticketService *services.TicketService) *TicketHandler {
 	return &TicketHandler{TicketService: ticketService}
 }
 
+// GetStats - GET /api/users/stats
+func (h *TicketHandler) GetStats(c *gin.Context) {
+	stats, err := h.TicketService.GetAdminStats()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status":  "error",
+			"message": "Failed to get stats",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status": "success",
+		"data":   stats,
+	})
+}
+
 // Create - POST /api/tickets
 func (h *TicketHandler) Create(c *gin.Context) {
 	var input services.CreateTicketInput

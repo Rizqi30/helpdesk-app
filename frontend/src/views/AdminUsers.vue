@@ -2,12 +2,21 @@
 import { ref, onMounted } from 'vue'
 import DefaultLayout from '@/layouts/DefaultLayout.vue'
 import FormAlert from '@/components/FormAlert.vue'
-import { userService, type User } from '@/services/user'
-import { Loader2 } from 'lucide-vue-next'
+import { userService, type User, type AdminStats } from '@/services/user'
+import { 
+  Loader2,
+  Ticket,
+  AlertTriangle,
+  CheckCircle,
+  Clock,
+  Archive
+} from 'lucide-vue-next'
 
 const users = ref<User[]>([])
 const loading = ref(false)
 const error = ref('')
+
+const stats = ref<AdminStats | null>(null)
 
 const editingUserId = ref<number | null>(null)
 const editingRole = ref('')
@@ -25,6 +34,13 @@ async function fetchUsers() {
     error.value = err.response?.data?.message || 'Gagal memuat daftar pengguna'
   } finally {
     loading.value = false
+  }
+}
+
+async function fetchStats() {
+  try {
+    stats.value = await userService.getStats()
+  } catch {
   }
 }
 
@@ -50,6 +66,7 @@ async function handleSaveRole(userId: number) {
     roleSuccess.value = 'Role berhasil diubah'
     editingUserId.value = null
     await fetchUsers()
+    await fetchStats()
 
     setTimeout(() => {
       roleSuccess.value = ''
@@ -80,13 +97,72 @@ function formatDate(dateStr: string) {
   })
 }
 
-onMounted(fetchUsers)
+onMounted(() => {
+  fetchUsers()
+  fetchStats()
+})
 </script>
 
 <template>
   <DefaultLayout>
     <div>
       <h1 class="text-2xl font-bold text-gray-900 mb-6">Kelola Pengguna</h1>
+
+      <div v-if="stats" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+        <div class="bg-white p-4 rounded-lg border border-gray-200">
+          <div class="flex items-center justify-between text-gray-500 mb-1">
+            <span class="text-xs font-medium">Total Tiket</span>
+            <Ticket :size="16" class="text-blue-500" />
+          </div>
+          <p class="text-2xl font-bold text-gray-900">{{ stats.total_tickets }}</p>
+        </div>
+
+        <div class="bg-white p-4 rounded-lg border border-gray-200">
+          <div class="flex items-center justify-between text-gray-500 mb-1">
+            <span class="text-xs font-medium">Open</span>
+            <Clock :size="16" class="text-blue-500" />
+          </div>
+          <p class="text-2xl font-bold text-blue-600">{{ stats.open_tickets }}</p>
+        </div>
+
+        <div class="bg-white p-4 rounded-lg border border-gray-200">
+          <div class="flex items-center justify-between text-gray-500 mb-1">
+            <span class="text-xs font-medium">In Progress</span>
+            <Clock :size="16" class="text-yellow-500" />
+          </div>
+          <p class="text-2xl font-bold text-yellow-600">{{ stats.in_progress_tickets }}</p>
+        </div>
+
+        <div class="bg-white p-4 rounded-lg border border-gray-200">
+          <div class="flex items-center justify-between text-gray-500 mb-1">
+            <span class="text-xs font-medium">Resolved</span>
+            <CheckCircle :size="16" class="text-green-500" />
+          </div>
+          <p class="text-2xl font-bold text-green-600">{{ stats.resolved_tickets }}</p>
+        </div>
+
+        <div class="bg-white p-4 rounded-lg border border-gray-200">
+          <div class="flex items-center justify-between text-gray-500 mb-1">
+            <span class="text-xs font-medium">Closed</span>
+            <Archive :size="16" class="text-gray-500" />
+          </div>
+          <p class="text-2xl font-bold text-gray-600">{{ stats.closed_tickets }}</p>
+        </div>
+
+        <div
+          class="p-4 rounded-lg border"
+          :class="stats.overdue_tickets > 0 ? 'bg-red-50 border-red-200' : 'bg-white border-gray-200'"
+        >
+          <div
+            class="flex items-center justify-between mb-1"
+            :class="stats.overdue_tickets > 0 ? 'text-red-700' : 'text-gray-500'"
+          >
+            <span class="text-xs font-medium">Overdue SLA</span>
+            <AlertTriangle :size="16" class="text-red-600" />
+          </div>
+          <p class="text-2xl font-bold text-red-600">{{ stats.overdue_tickets }}</p>
+        </div>
+      </div>
 
       <FormAlert v-if="roleSuccess" type="success" :message="roleSuccess" />
       <FormAlert v-if="roleError" type="error" :message="roleError" />
