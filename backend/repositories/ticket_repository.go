@@ -100,6 +100,10 @@ func (r *TicketRepository) FindAll(filter TicketFilter, requesterID uint) (*Tick
 		totalPages++
 	}
 
+	for i := range tickets {
+		tickets[i].CalculateOverdue()
+	}
+
 	return &TicketListResult{
 		Tickets: tickets,
 		Total: total,
@@ -115,6 +119,11 @@ func (r *TicketRepository) FindByID(id uint) (*models.Ticket, error) {
 		Preload("Requester").
 		Preload("Assignee").
 		First(&ticket, id).Error
+
+	if err == nil {
+		ticket.CalculateOverdue()
+	}
+	
 	return &ticket, err
 }
 

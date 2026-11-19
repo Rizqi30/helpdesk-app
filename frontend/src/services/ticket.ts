@@ -7,6 +7,7 @@ export interface Ticket {
   category: string
   priority: string
   status: string
+  is_overdue?: boolean
   requester_id: number
   assignee_id: number | null
   created_at: string

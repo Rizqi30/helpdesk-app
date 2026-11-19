@@ -2,8 +2,10 @@ package tests
 
 import (
 	"fmt"
+	"helpdesk-app/backend/models"
 	"net/http"
 	"testing"
+	"time"
 )
 
 // Test 6: Requester tidak dapat melihat tiket milik orang lain
@@ -181,5 +183,48 @@ func TestRequesterCannotAssignTicket(t *testing.T) {
 
 	if w.Code != http.StatusForbidden {
 		t.Errorf("Requester should not be able to assign, got status %d", w.Code)
+	}
+}
+
+// Test 10: SLA - Tiket urgent yang belum ditangani ditandai terlambat (is_overdue)
+func TestTicketSLAOverdue(t *testing.T) {
+	cleanTables()
+
+	createTestUser("Requester", "req@test.com", "password123", "requester")
+	tokenReq := loginAndGetToken("req@test.com", "password123")
+
+	// Buat tiket urgent
+	w := performRequest("POST", "/api/tickets", map[string]string{
+		"title":       "Server Database Crash",
+		"description": "Server database utama mengalami down total",
+		"priority":    "urgent",
+	}, tokenReq)
+
+	if w.Code != http.StatusCreated {
+		t.Fatalf("Failed to create ticket: %d", w.Code)
+	}
+
+	resp := parseResponse(w)
+	data := resp["data"].(map[string]interface{})
+	ticketID := uint(data["id"].(float64))
+
+	// Baru dibuat -> belum overdue
+	w = performRequest("GET", fmt.Sprintf("/api/tickets/%d", ticketID), nil, tokenReq)
+	resp = parseResponse(w)
+	data = resp["data"].(map[string]interface{})
+	if data["is_overdue"].(bool) {
+		t.Errorf("New ticket should not be overdue yet")
+	}
+
+	// Simulasikan tiket dibuat 3 jam yang lalu (melebihi SLA 2 jam)
+	threeHoursAgo := time.Now().Add(-3 * time.Hour)
+	testDB.Model(&models.Ticket{}).Where("id = ?", ticketID).Update("created_at", threeHoursAgo)
+	
+	// Fetch kembali -> harus ditandai is_overdue: true
+	w = performRequest("GET", fmt.Sprintf("/api/tickets/%d", ticketID), nil, tokenReq)
+	resp = parseResponse(w)
+	data = resp["data"].(map[string]interface{})
+	if !data["is_overdue"].(bool) {
+		t.Errorf("Urgent ticket older than 2 hours should be marked as overdue")
 	}
 }

@@ -7,7 +7,7 @@ import PriorityBadge from '@/components/PriorityBadge.vue'
 import Pagination from '@/components/Pagination.vue'
 import { ticketService, type TicketFilter, type Ticket } from '@/services/ticket'
 import { useAuthStore } from '@/stores/auth'
-import { Plus, Search, Loader2 } from 'lucide-vue-next'
+import { Plus, Search, Loader2, AlertTriangle } from 'lucide-vue-next'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -170,7 +170,18 @@ onMounted(fetchTickets)
                 class="hover:bg-gray-50 cursor-pointer"
               >
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">#{{ ticket.id }}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ ticket.title }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                  <div class="flex items-center gap-2">
+                    <span>{{ ticket.title }}</span>
+                    <span
+                      v-if="ticket.is_overdue"
+                      class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-red-600 text-white animate-pulse"
+                    >
+                      <AlertTriangle :size="12" />
+                      SLA OVerdue
+                    </span>
+                  </div>
+                </td>
                 <td v-if="!auth.isRequester" class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ ticket.requester.name }}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ ticket.category || '-' }}</td>
                 <td class="px-6 py-4 whitespace-nowrap">

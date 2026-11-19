@@ -12,6 +12,8 @@ const (
 	StatusInProgress = "in_progress"
 	StatusResolved   = "resolved"
 	StatusClosed     = "closed"
+
+	SLAThreshold = 2 * time.Hour
 )
 
 type Ticket struct {
@@ -26,7 +28,19 @@ type Ticket struct {
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 
+	IsOverdue bool `json:"is_overdue" gorm:"-"`
+
 	Requester User `json:"requester" gorm:"foreignKey:RequesterID;constraint:OnDelete:CASCADE"`
 	Assignee User `json:"assignee,omitempty" gorm:"foreignKey:AssigneeID;constraint:OnDelete:SET NULL"`
 	Comments []Comment `json:"comments,omitempty" gorm:"foreignKey:TicketID"`
+}
+
+func (t *Ticket) CalculateOverdue() {
+	if t.Priority == PriorityUrgent && t.Status == StatusOpen {
+		if time.Since(t.CreatedAt) > SLAThreshold {
+			t.IsOverdue = true
+			return
+		}
+	}
+	t.IsOverdue = false
 }

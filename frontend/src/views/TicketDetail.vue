@@ -9,7 +9,7 @@ import { ticketService, type Ticket } from '@/services/ticket'
 import { commentService } from '@/services/comment'
 import { userService, type User } from '@/services/user'
 import { useAuthStore } from '@/stores/auth'
-import { ArrowLeft, Send, Loader2, User as UserIcon } from 'lucide-vue-next'
+import { ArrowLeft, Send, Loader2, User as UserIcon, AlertTriangle } from 'lucide-vue-next'
 
 const route = useRoute()
 const router = useRouter()
@@ -216,6 +216,13 @@ onMounted(() => {
               <div class="flex flex-wrap items-center gap-2">
                 <StatusBadge :status="ticket.status" />
                 <PriorityBadge :priority="ticket.priority" />
+                <span
+                  v-if="ticket.is_overdue"
+                  class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-600 text-white"
+                >
+                  <AlertTriangle :size="13" />
+                  SLA Overdue
+                </span>
                 <span v-if="ticket.category" class="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
                   {{ ticket.category }}
                 </span>
