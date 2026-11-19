@@ -84,7 +84,7 @@ docker compose up --build
 ```
 
 Setelah seluruh container menyala:
-- **Frontend**: `http://localhost` (Port 80)
+- **Frontend**: `http://localhost:3000` (Port 3000)
 - **Backend API**: `http://localhost:8080`
 - **Health Check**: `http://localhost:8080/api/health`
 
