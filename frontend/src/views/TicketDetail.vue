@@ -148,6 +148,25 @@ async function handleAssign() {
   }
 }
 
+async function handleSelfAssign() {
+  if (!auth.user) return
+  assignLoading.value = true
+  assignError.value = ''
+  assignSuccess.value = ''
+  try {
+    await ticketService.update(ticketId.value, { assignee_id: auth.user.id })
+    assignSuccess.value = 'Tiket berhasil diambil dan ditugaskan ke Anda'
+    await fetchTicket()
+    setTimeout(() => {
+      assignSuccess.value = ''
+    }, 3000)
+  } catch (err: any) {
+    assignError.value = err.response?.data?.message || 'Gagal mengambil tiket'
+  } finally {
+    assignLoading.value = false
+  }
+}
+
 async function handlePriorityChange() {
   if (!selectedPriority.value || selectedPriority.value === ticket.value?.priority) return
 
@@ -275,6 +294,25 @@ onMounted(() => {
                 class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {{ assignLoading ? 'Menyimpan...' : 'Assign' }}
+              </button>
+            </div>
+          </div>
+
+          <!-- untuk agent sendiri -->
+           <div v-else-if="auth.isAgent && ticket.assignee_id !== auth.user?.id">
+            <FormAlert v-if="assignSuccess" type="success" :message="assignSuccess" />
+            <FormAlert v-if="assignError" type="error" :message="assignError" />
+            <div class="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-md">
+              <div>
+                <p class="text-sm font-medium text-blue-900">Tiket belum Anda tangani</p>
+                <p class="text-xs text-blue-600">Ambil tiket ini untuk menugaskannya ke akun Anda.</p>
+              </div>
+              <button
+                @click="handleSelfAssign"
+                :disabled="assignLoading"
+                class="px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {{ assignLoading ? 'Memproses...' : 'Ambil Tiket Ini' }}
               </button>
             </div>
           </div>
